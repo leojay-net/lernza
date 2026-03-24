@@ -37,7 +37,52 @@
   --animate-scale-in: scale-in 0.4s ease-out both;
 }
 
-/* ── Keyframes ── */
+/* ── Dark mode token overrides ────────────────────────────────────────────── */
+
+.dark {
+  --color-background: #0F0F0F;
+  --color-foreground: #F5F5F4;
+  --color-primary: #FACC15;          
+  --color-primary-foreground: #000000;
+  --color-secondary: #1C1917;
+  --color-secondary-foreground: #F5F5F4;
+  --color-muted: #292524;
+  --color-muted-foreground: #A8A29E;
+  --color-card: #1A1A1A;
+  --color-card-foreground: #F5F5F4;
+  --color-border: #F5F5F4;            
+  --color-input: #F5F5F4;
+  --color-ring: #FACC15;
+  --color-accent: #FACC15;
+  --color-accent-foreground: #000000;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+  --color-success: #22C55E;
+  --color-success-foreground: #000000;
+  --color-warning: #F59E0B;
+  --color-warning-foreground: #000000;
+}
+
+
+
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 100ms;
+  transition-timing-function: ease;
+}
+
+
+.neo-press,
+.neo-lift,
+.card-tilt,
+.shimmer-on-hover::after,
+[class*="animate-"] {
+  transition-property: translate, transform, opacity, box-shadow;
+}
+
+
 
 @keyframes fade-in {
   from { opacity: 0; }
@@ -240,6 +285,10 @@
   background-size: 28px 28px;
 }
 
+.dark .bg-grid-dots {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+}
+
 .bg-diagonal-lines {
   background-image: repeating-linear-gradient(
     -45deg,
@@ -247,6 +296,16 @@
     transparent 8px,
     rgba(0, 0, 0, 0.02) 8px,
     rgba(0, 0, 0, 0.02) 9px
+  );
+}
+
+.dark .bg-diagonal-lines {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.03) 8px,
+    rgba(255, 255, 255, 0.03) 9px
   );
 }
 
@@ -303,9 +362,17 @@ body {
   box-shadow: 10px 10px 0 #000;
 }
 
+.dark .card-tilt:hover {
+  box-shadow: 10px 10px 0 var(--color-foreground);
+}
+
 .card-tilt:active {
   transform: perspective(800px) rotateX(0) rotateY(0) translateY(0);
   box-shadow: 3px 3px 0 #000;
+}
+
+.dark .card-tilt:active {
+  box-shadow: 3px 3px 0 var(--color-foreground);
 }
 
 /* ── Stagger animation delays ── */

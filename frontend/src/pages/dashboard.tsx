@@ -21,7 +21,6 @@ import {
 } from "@/lib/mock-data"
 import { formatTokens } from "@/lib/utils"
 
-// The first two workspaces share the same owner — treat them as "owned"
 const MOCK_OWNER = "GBXR...K2YQ"
 
 interface DashboardProps {
@@ -35,7 +34,6 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
   if (!connected) {
     return (
       <div className="min-h-[calc(100vh-67px)] flex items-center justify-center relative overflow-hidden">
-        {/* Background elements */}
         <div className="absolute inset-0 bg-grid-dots pointer-events-none" />
         <div className="absolute top-[10%] left-[8%] w-20 h-20 bg-primary border-[3px] border-black shadow-[4px_4px_0_#000] rotate-12 opacity-[0.08] animate-float" style={{ animationDuration: "8s" }} />
         <div className="absolute bottom-[15%] right-[6%] w-14 h-14 bg-primary border-[2px] border-black shadow-[3px_3px_0_#000] -rotate-6 opacity-[0.1] animate-float" style={{ animationDuration: "6s", animationDelay: "1s" }} />
@@ -43,9 +41,7 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
         <div className="absolute top-[20%] right-[12%] w-8 h-8 bg-primary border-[2px] border-black opacity-[0.07] -rotate-12 animate-float" style={{ animationDuration: "9s", animationDelay: "0.5s" }} />
 
         <div className="relative px-4 max-w-lg mx-auto">
-          {/* Card container */}
-          <div className="bg-white border-[3px] border-black shadow-[8px_8px_0_#000] overflow-hidden animate-scale-in">
-            {/* Yellow header strip */}
+          <div className="bg-card text-card-foreground border-[3px] border-black shadow-[8px_8px_0_#000] overflow-hidden animate-scale-in">
             <div className="bg-primary border-b-[3px] border-black px-6 py-3 flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider">Dashboard</span>
               <div className="flex items-center gap-1.5">
@@ -65,16 +61,11 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
                 Connect your Freighter wallet to view your quests, track your
                 progress, and start earning USDC.
               </p>
-              <Button
-                size="lg"
-                onClick={connect}
-                className="shimmer-on-hover animate-fade-in-up stagger-3"
-              >
+              <Button size="lg" onClick={connect} className="shimmer-on-hover animate-fade-in-up stagger-3">
                 <Wallet className="h-4 w-4" />
                 Connect Wallet
               </Button>
 
-              {/* Mini feature list */}
               <div className="mt-8 pt-6 border-t-[2px] border-black animate-fade-in-up stagger-4">
                 <div className="flex flex-wrap justify-center gap-4">
                   {[
@@ -94,7 +85,6 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
             </div>
           </div>
 
-          {/* Decorative accent blocks */}
           <div className="absolute -top-4 -right-4 w-10 h-10 bg-primary border-[2px] border-black shadow-[3px_3px_0_#000] rotate-12 animate-fade-in-up stagger-5 hidden sm:block" />
           <div className="absolute -bottom-3 -left-3 w-8 h-8 bg-success border-[2px] border-black shadow-[2px_2px_0_#000] -rotate-6 animate-fade-in-up stagger-6 hidden sm:block" />
         </div>
@@ -102,7 +92,6 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
     )
   }
 
-  // Apply filter
   const filteredWorkspaces = MOCK_WORKSPACES.filter((ws) => {
     if (filter === "owned") return ws.owner === MOCK_OWNER
     if (filter === "enrolled") return ws.owner !== MOCK_OWNER
@@ -120,17 +109,12 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
               <Sparkles className="h-5 w-5" />
               <span className="text-sm font-bold uppercase tracking-wider">Welcome back</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black">
-              {shortAddress}
-            </h1>
+            <h1 className="text-3xl sm:text-4xl font-black">{shortAddress}</h1>
             <p className="text-sm font-bold opacity-70 mt-1">
               You have {MOCK_WORKSPACES.length} active quests
             </p>
           </div>
-          <Button
-            variant="secondary"
-            className="shimmer-on-hover group flex-shrink-0"
-          >
+          <Button variant="secondary" className="shimmer-on-hover group flex-shrink-0">
             <Plus className="h-4 w-4" />
             New Quest
           </Button>
@@ -146,9 +130,7 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition-colors capitalize cursor-pointer border-r-[2px] border-black last:border-r-0 ${
-                filter === f
-                  ? "bg-primary"
-                  : "bg-white hover:bg-secondary"
+                filter === f ? "bg-primary" : "bg-card hover:bg-secondary"
               }`}
             >
               {f}
@@ -166,16 +148,9 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
           const completedCount = new Set(
             completions.filter((c) => c.completed).map((c) => c.milestoneId)
           ).size
-          const totalReward = milestones.reduce(
-            (sum, m) => sum + m.rewardAmount,
-            0
-          )
+          const totalReward = milestones.reduce((sum, m) => sum + m.rewardAmount, 0)
           const earnedReward = milestones
-            .filter((m) =>
-              completions.some(
-                (c) => c.milestoneId === m.id && c.completed
-              )
-            )
+            .filter((m) => completions.some((c) => c.milestoneId === m.id && c.completed))
             .reduce((sum, m) => sum + m.rewardAmount, 0)
           const isOwned = ws.owner === MOCK_OWNER
 
@@ -192,13 +167,12 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
                       <CardTitle className="text-base group-hover:text-primary transition-colors">
                         {ws.name}
                       </CardTitle>
-                      {completedCount === totalMilestones &&
-                        totalMilestones > 0 && (
-                          <Badge variant="success" className="gap-1">
-                            <Sparkles className="h-3 w-3" />
-                            Complete
-                          </Badge>
-                        )}
+                      {completedCount === totalMilestones && totalMilestones > 0 && (
+                        <Badge variant="success" className="gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          Complete
+                        </Badge>
+                      )}
                       <Badge variant={isOwned ? "default" : "secondary"} className="text-[10px]">
                         {isOwned ? "Owner" : "Enrolled"}
                       </Badge>
@@ -231,21 +205,15 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
                 {totalMilestones > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <Progress
-                        value={completedCount}
-                        max={totalMilestones}
-                        className="flex-1"
-                      />
+                      <Progress value={completedCount} max={totalMilestones} className="flex-1" />
                       <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
                         {completedCount}/{totalMilestones}
                       </span>
                     </div>
                     {earnedReward > 0 && (
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-muted-foreground">
-                          Earned so far
-                        </span>
-                        <span className="text-xs font-black text-green-700">
+                        <span className="text-xs font-bold text-muted-foreground">Earned so far</span>
+                        <span className="text-xs font-black text-green-700 dark:text-green-400">
                           +{formatTokens(earnedReward)} / {formatTokens(totalReward)} USDC
                         </span>
                       </div>

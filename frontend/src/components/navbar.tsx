@@ -1,7 +1,8 @@
 import { useState } from "react"
-import { Wallet, LogOut, Menu, X } from "lucide-react"
+import { Wallet, LogOut, Menu, X, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useWallet } from "@/hooks/use-wallet"
+import { useTheme } from "@/App"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
@@ -34,6 +35,45 @@ function LogoMark({ className }: { className?: string }) {
   )
 }
 
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme === "dark"
+
+  return (
+    <button
+      onClick={toggleTheme}
+      aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+      title={`Switch to ${isDark ? "light" : "dark"} mode`}
+      className={cn(
+        "relative w-9 h-9 border-[2px] border-black shadow-[2px_2px_0_#000]",
+        "flex items-center justify-center neo-press cursor-pointer overflow-hidden",
+        isDark
+          ? "bg-primary text-black hover:bg-yellow-300"
+          : "bg-white text-black hover:bg-secondary"
+      )}
+    >
+      {/* Sun icon - visible in dark mode (click to go light) */}
+      <Sun
+        className={cn(
+          "h-4 w-4 absolute transition-all duration-300",
+          isDark
+            ? "opacity-100 rotate-0 scale-100"
+            : "opacity-0 rotate-90 scale-50"
+        )}
+      />
+      {/* Moon icon - visible in light mode (click to go dark) */}
+      <Moon
+        className={cn(
+          "h-4 w-4 absolute transition-all duration-300",
+          isDark
+            ? "opacity-0 -rotate-90 scale-50"
+            : "opacity-100 rotate-0 scale-100"
+        )}
+      />
+    </button>
+  )
+}
+
 export function Navbar({ activePage, onNavigate }: NavbarProps) {
   const { connected, shortAddress, connect, disconnect, loading } = useWallet()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -43,10 +83,8 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
     setMobileOpen(false)
   }
 
-  const visibleItems = NAV_ITEMS
-
   return (
-    <header className="sticky top-0 z-50 border-b-[3px] border-black bg-white">
+    <header className="sticky top-0 z-50 border-b-[3px] border-black bg-background transition-colors duration-300">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <button
@@ -59,7 +97,7 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
 
         {/* Desktop nav links */}
         <nav className="hidden sm:flex items-center gap-1">
-          {visibleItems.map((item) => (
+          {NAV_ITEMS.map((item) => (
             <button
               key={item.key}
               onClick={() => handleNavigate(item.key)}
@@ -75,15 +113,15 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
           ))}
         </nav>
 
-        {/* Right side: wallet + mobile menu */}
-        <div className="flex items-center gap-3">
+        {/* Right side: theme toggle + wallet + mobile menu */}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+
           {connected ? (
             <>
               <div className="hidden sm:flex items-center gap-2 border-[2px] border-black bg-secondary px-3 py-1.5 shadow-[2px_2px_0_#000]">
                 <div className="h-2.5 w-2.5 bg-success border border-black" />
-                <span className="text-sm font-mono font-bold">
-                  {shortAddress}
-                </span>
+                <span className="text-sm font-mono font-bold">{shortAddress}</span>
               </div>
               <Button variant="ghost" size="icon" onClick={disconnect}>
                 <LogOut className="h-4 w-4" />
@@ -104,22 +142,18 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="sm:hidden w-9 h-9 border-[2px] border-black bg-white shadow-[2px_2px_0_#000] flex items-center justify-center neo-press cursor-pointer"
+            className="sm:hidden w-9 h-9 border-[2px] border-black bg-card shadow-[2px_2px_0_#000] flex items-center justify-center neo-press cursor-pointer"
           >
-            {mobileOpen ? (
-              <X className="h-4 w-4" />
-            ) : (
-              <Menu className="h-4 w-4" />
-            )}
+            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
       {/* Mobile menu dropdown */}
       {mobileOpen && (
-        <div className="sm:hidden border-t-[3px] border-black bg-white animate-fade-in-down">
+        <div className="sm:hidden border-t-[3px] border-black bg-background animate-fade-in-down transition-colors duration-300">
           <div className="px-4 py-3 space-y-1">
-            {visibleItems.map((item) => (
+            {NAV_ITEMS.map((item) => (
               <button
                 key={item.key}
                 onClick={() => handleNavigate(item.key)}
