@@ -1,92 +1,92 @@
-import { useState, useEffect, useCallback } from "react"
-import { Analytics } from "@vercel/analytics/react"
-import { SpeedInsights } from "@vercel/speed-insights/react"
-import { Navbar } from "@/components/navbar"
+import { useState, useCallback, useEffect } from "react"
+import { Layout } from "@/components/layout"
 import { Landing } from "@/pages/landing"
 import { Dashboard } from "@/pages/dashboard"
-import { WorkspaceView } from "@/pages/workspace"
+import { QuestView } from "@/pages/quest"
 import { Profile } from "@/pages/profile"
 import { NotFound } from "@/pages/not-found"
 
 const VALID_PAGES = ["landing", "dashboard", "profile"] as const
-type Page = (typeof VALID_PAGES)[number] | "workspace" | "404"
+type Page = (typeof VALID_PAGES)[number] | "quest" | "404"
 
-function pathToPage(pathname: string): { page: Page; workspaceId: number | null } {
-  const clean = pathname.replace(/\/+$/, "") || "/"
-
-  if (clean === "/") return { page: "landing", workspaceId: null }
-  if (clean === "/dashboard") return { page: "dashboard", workspaceId: null }
-  if (clean === "/profile") return { page: "profile", workspaceId: null }
-
-  const wsMatch = clean.match(/^\/workspace\/(\d+)$/)
-  if (wsMatch) return { page: "workspace", workspaceId: Number(wsMatch[1]) }
-
-  return { page: "404", workspaceId: null }
+interface AppState {
+  page: Page
+  questId: number | null
 }
 
-function pageToPath(page: Page, workspaceId: number | null): string {
+function pathToPage(pathname: string): { page: Page; questId: number | null } {
+  const clean = pathname === "" ? "/" : pathname
+
+  if (clean === "/") return { page: "landing", questId: null }
+  if (clean === "/dashboard") return { page: "dashboard", questId: null }
+  if (clean === "/profile") return { page: "profile", questId: null }
+
+  const qMatch = clean.match(/^\/quest\/(\d+)$/)
+  if (qMatch) return { page: "quest", questId: Number(qMatch[1]) }
+
+  return { page: "404", questId: null }
+}
+
+function pageToPath(page: Page, questId: number | null): string {
   if (page === "landing") return "/"
-  if (page === "workspace" && workspaceId !== null) return `/workspace/${workspaceId}`
+  if (page === "quest" && questId !== null) return `/quest/${questId}`
   return `/${page}`
 }
 
-function App() {
-  const [state, setState] = useState(() => pathToPage(window.location.pathname))
+export default function App() {
+  const [state, setState] = useState<AppState>(() => pathToPage(window.location.pathname))
 
   useEffect(() => {
-    const onPopState = () => setState(pathToPage(window.location.pathname))
-    window.addEventListener("popstate", onPopState)
-    return () => window.removeEventListener("popstate", onPopState)
+    const handlePopState = () => {
+      setState(pathToPage(window.location.pathname))
+    }
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
   }, [])
 
-  const handleNavigate = useCallback((p: string) => {
+  const navigate = useCallback((p: string) => {
     const page = (VALID_PAGES as readonly string[]).includes(p) ? (p as Page) : "404"
     const path = pageToPath(page, null)
-    window.history.pushState(null, "", path)
-    setState({ page, workspaceId: null })
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    window.history.pushState({}, "", path)
+    setState({ page, questId: null })
   }, [])
 
-  const handleSelectWorkspace = useCallback((id: number) => {
-    const path = pageToPath("workspace", id)
-    window.history.pushState(null, "", path)
-    setState({ page: "workspace", workspaceId: id })
-    window.scrollTo({ top: 0, behavior: "smooth" })
+  const handleSelectQuest = useCallback((id: number) => {
+    const path = pageToPath("quest", id)
+    window.history.pushState({}, "", path)
+    setState({ page: "quest", questId: id })
   }, [])
 
   const renderPage = () => {
-    if (state.page === "workspace" && state.workspaceId !== null) {
+    if (state.page === "quest" && state.questId !== null) {
       return (
-        <WorkspaceView
-          workspaceId={state.workspaceId}
-          onBack={() => handleNavigate("dashboard")}
+        <QuestView
+          questId={state.questId}
+          onBack={() => navigate("dashboard")}
         />
       )
     }
+
     switch (state.page) {
       case "landing":
-        return <Landing onNavigate={handleNavigate} />
+        return <Landing onNavigate={navigate} />
       case "dashboard":
         return (
           <Dashboard
-            onSelectWorkspace={handleSelectWorkspace}
+            onSelectWorkspace={handleSelectQuest}
           />
         )
       case "profile":
         return <Profile />
+      case "404":
       default:
-        return <NotFound onNavigate={handleNavigate} />
+        return <NotFound onNavigate={navigate} />
     }
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navbar activePage={state.page} onNavigate={handleNavigate} />
-      <main>{renderPage()}</main>
-      <Analytics />
-      <SpeedInsights />
-    </div>
+    <Layout onNavigate={navigate} activePage={state.page === "quest" ? "dashboard" : state.page}>
+      {renderPage()}
+    </Layout>
   )
 }
-
-export default App

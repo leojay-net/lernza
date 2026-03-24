@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Plus,
   Users,
@@ -8,29 +8,104 @@ import {
   Wallet,
   Sparkles,
   Search,
+  Loader2,
+  AlertCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useWallet } from "@/hooks/use-wallet"
-import {
-  MOCK_WORKSPACES,
-  MOCK_MILESTONES,
-  MOCK_COMPLETIONS,
-} from "@/lib/mock-data"
 import { formatTokens } from "@/lib/utils"
-
-// The first two workspaces share the same owner — treat them as "owned"
-const MOCK_OWNER = "GBXR...K2YQ"
+import { questClient } from "@/lib/contracts/quest"
+import type { QuestInfo } from "@/lib/contracts/quest"
+import { milestoneClient } from "@/lib/contracts/milestone"
+import { rewardsClient } from "@/lib/contracts/rewards"
 
 interface DashboardProps {
   onSelectWorkspace: (id: number) => void
 }
 
+interface QuestWithStats extends QuestInfo {
+  enrolleeCount: number
+  milestoneCount: number
+  poolBalance: bigint
+  completedCount: number
+  totalReward: bigint
+  earnedReward: bigint
+  isOwned: boolean
+}
+
 export function Dashboard({ onSelectWorkspace }: DashboardProps) {
-  const { connected, connect, shortAddress } = useWallet()
+  const { connected, connect, shortAddress, address } = useWallet()
   const [filter, setFilter] = useState<"all" | "owned" | "enrolled">("all")
+  const [quests, setQuests] = useState<QuestWithStats[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchQuests = useCallback(async () => {
+    if (!address) return
+    setLoading(true)
+    setError(null)
+    try {
+      const count = await questClient.getQuestCount()
+      const fetchedQuests: QuestWithStats[] = []
+
+      for (let i = 0; i < count; i++) {
+        const quest = await questClient.getQuest(i)
+        if (!quest) continue
+
+        const [
+          enrollees,
+          milestoneCount,
+          poolBalance,
+          milestones,
+          completedCount,
+        ] = await Promise.all([
+          questClient.getEnrollees(i),
+          milestoneClient.getMilestoneCount(i),
+          rewardsClient.getPoolBalance(i),
+          milestoneClient.getMilestones(i),
+          milestoneClient.getEnrolleeCompletions(i, address),
+        ])
+
+        const isEnrolled = await questClient.isEnrollee(i, address)
+        const isOwned = quest.owner === address
+
+        // Filter based on relevance to user
+        if (!isOwned && !isEnrolled) continue
+
+        const totalReward = milestones.reduce((sum, m) => sum + m.rewardAmount, 0n)
+        
+        // Estimation of earned rewards
+        const earnedReward = completedCount > 0 ? (totalReward * BigInt(completedCount)) / BigInt(milestoneCount || 1) : 0n
+
+        fetchedQuests.push({
+          ...quest,
+          enrolleeCount: enrollees.length,
+          milestoneCount,
+          poolBalance,
+          completedCount,
+          totalReward,
+          earnedReward,
+          isOwned,
+        })
+      }
+
+      setQuests(fetchedQuests)
+    } catch (err) {
+      console.error("Failed to fetch quests:", err)
+      setError("Failed to load quests from the network.")
+    } finally {
+      setLoading(false)
+    }
+  }, [address])
+
+  useEffect(() => {
+    if (connected && address) {
+      fetchQuests()
+    }
+  }, [connected, address, fetchQuests])
 
   if (!connected) {
     return (
@@ -73,39 +148,17 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
                 <Wallet className="h-4 w-4" />
                 Connect Wallet
               </Button>
-
-              {/* Mini feature list */}
-              <div className="mt-8 pt-6 border-t-[2px] border-black animate-fade-in-up stagger-4">
-                <div className="flex flex-wrap justify-center gap-4">
-                  {[
-                    { icon: Target, text: "Track quests" },
-                    { icon: Coins, text: "Earn tokens" },
-                    { icon: Sparkles, text: "On-chain" },
-                  ].map((item) => (
-                    <div key={item.text} className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-secondary border-[1.5px] border-black flex items-center justify-center">
-                        <item.icon className="h-3 w-3" />
-                      </div>
-                      <span className="text-xs font-bold text-muted-foreground">{item.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
-
-          {/* Decorative accent blocks */}
-          <div className="absolute -top-4 -right-4 w-10 h-10 bg-primary border-[2px] border-black shadow-[3px_3px_0_#000] rotate-12 animate-fade-in-up stagger-5 hidden sm:block" />
-          <div className="absolute -bottom-3 -left-3 w-8 h-8 bg-success border-[2px] border-black shadow-[2px_2px_0_#000] -rotate-6 animate-fade-in-up stagger-6 hidden sm:block" />
         </div>
       </div>
     )
   }
 
   // Apply filter
-  const filteredWorkspaces = MOCK_WORKSPACES.filter((ws) => {
-    if (filter === "owned") return ws.owner === MOCK_OWNER
-    if (filter === "enrolled") return ws.owner !== MOCK_OWNER
+  const filteredQuests = quests.filter((q) => {
+    if (filter === "owned") return q.isOwned
+    if (filter === "enrolled") return !q.isOwned
     return true
   })
 
@@ -124,12 +177,13 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
               {shortAddress}
             </h1>
             <p className="text-sm font-bold opacity-70 mt-1">
-              You have {MOCK_WORKSPACES.length} active quests
+              You have {quests.length} active quests
             </p>
           </div>
           <Button
             variant="secondary"
             className="shimmer-on-hover group flex-shrink-0"
+            onClick={() => {}}
           >
             <Plus className="h-4 w-4" />
             New Quest
@@ -157,54 +211,50 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
         </div>
       </div>
 
-      {/* Quest list */}
-      <div className="grid gap-5 relative">
-        {filteredWorkspaces.map((ws, i) => {
-          const milestones = MOCK_MILESTONES[ws.id] || []
-          const completions = MOCK_COMPLETIONS[ws.id] || []
-          const totalMilestones = milestones.length
-          const completedCount = new Set(
-            completions.filter((c) => c.completed).map((c) => c.milestoneId)
-          ).size
-          const totalReward = milestones.reduce(
-            (sum, m) => sum + m.rewardAmount,
-            0
-          )
-          const earnedReward = milestones
-            .filter((m) =>
-              completions.some(
-                (c) => c.milestoneId === m.id && c.completed
-              )
-            )
-            .reduce((sum, m) => sum + m.rewardAmount, 0)
-          const isOwned = ws.owner === MOCK_OWNER
-
-          return (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+          <Loader2 className="h-10 w-10 animate-spin mb-4" />
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Loading on-chain data...</p>
+        </div>
+      ) : error ? (
+        <Card className="border-destructive/50 bg-destructive/5 animate-shake">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-10 w-10 text-destructive mb-4" />
+            <h3 className="font-black text-lg mb-2">Network Error</h3>
+            <p className="text-sm text-muted-foreground mb-6">{error}</p>
+            <Button onClick={fetchQuests} variant="outline" className="border-black">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-5 relative">
+          {filteredQuests.map((q, i) => (
             <Card
-              key={ws.id}
-              className={`card-tilt cursor-pointer group animate-fade-in-up stagger-${i + 1}`}
-              onClick={() => onSelectWorkspace(ws.id)}
+              key={q.id}
+              className={`card-tilt cursor-pointer group animate-fade-in-up stagger-${i + 1} border-black border-2`}
+              onClick={() => onSelectWorkspace(q.id)}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
                       <CardTitle className="text-base group-hover:text-primary transition-colors">
-                        {ws.name}
+                        {q.name}
                       </CardTitle>
-                      {completedCount === totalMilestones &&
-                        totalMilestones > 0 && (
+                      {q.completedCount === q.milestoneCount &&
+                        q.milestoneCount > 0 && (
                           <Badge variant="success" className="gap-1">
                             <Sparkles className="h-3 w-3" />
                             Complete
                           </Badge>
                         )}
-                      <Badge variant={isOwned ? "default" : "secondary"} className="text-[10px]">
-                        {isOwned ? "Owner" : "Enrolled"}
+                      <Badge variant={q.isOwned ? "default" : "secondary"} className="text-[10px]">
+                        {q.isOwned ? "Owner" : "Enrolled"}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                      {ws.description}
+                      {q.description}
                     </p>
                   </div>
                   <div className="w-8 h-8 bg-secondary border-[2px] border-black flex items-center justify-center flex-shrink-0 ml-3 group-hover:bg-primary group-hover:shadow-[2px_2px_0_#000] transition-all">
@@ -214,74 +264,58 @@ export function Dashboard({ onSelectWorkspace }: DashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap items-center gap-3 text-sm mb-4">
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge variant="secondary" className="gap-1 border-black border">
                     <Users className="h-3 w-3" />
-                    {ws.enrolleeCount} enrolled
+                    {q.enrolleeCount} enrolled
                   </Badge>
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge variant="secondary" className="gap-1 border-black border">
                     <Target className="h-3 w-3" />
-                    {ws.milestoneCount} milestones
+                    {q.milestoneCount} milestones
                   </Badge>
-                  <Badge variant="default" className="gap-1">
+                  <Badge variant="default" className="gap-1 border-black border">
                     <Coins className="h-3 w-3" />
-                    {formatTokens(ws.poolBalance)} USDC
+                    {formatTokens(Number(q.poolBalance))} USDC
                   </Badge>
                 </div>
 
-                {totalMilestones > 0 && (
+                {q.milestoneCount > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
                       <Progress
-                        value={completedCount}
-                        max={totalMilestones}
+                        value={q.completedCount}
+                        max={q.milestoneCount}
                         className="flex-1"
                       />
                       <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
-                        {completedCount}/{totalMilestones}
+                        {q.completedCount}/{q.milestoneCount}
                       </span>
                     </div>
-                    {earnedReward > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-muted-foreground">
-                          Earned so far
-                        </span>
-                        <span className="text-xs font-black text-green-700">
-                          +{formatTokens(earnedReward)} / {formatTokens(totalReward)} USDC
-                        </span>
-                      </div>
-                    )}
                   </div>
                 )}
               </CardContent>
             </Card>
-          )
-        })}
-      </div>
+          ))}
 
-      {filteredWorkspaces.length === 0 && (
-        <Card className="animate-fade-in-up">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-primary border-[3px] border-black shadow-[4px_4px_0_#000] flex items-center justify-center mb-6">
-              <Search className="h-6 w-6" />
-            </div>
-            <h3 className="font-black text-lg mb-2">
-              {filter === "all" ? "No quests yet" : `No ${filter} quests`}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-              {filter === "all"
-                ? "Create your first quest to start incentivizing learning with on-chain rewards."
-                : filter === "owned"
-                  ? "You haven't created any quests yet. Start one to incentivize learners."
-                  : "You haven't enrolled in any quests yet. Browse available quests to get started."}
-            </p>
-            {filter === "all" || filter === "owned" ? (
-              <Button className="shimmer-on-hover">
-                <Plus className="h-4 w-4" />
-                Create Quest
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
+          {filteredQuests.length === 0 && (
+            <Card className="animate-fade-in-up border-black border-2">
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-16 h-16 bg-primary border-[3px] border-black shadow-[4px_4px_0_#000] flex items-center justify-center mb-6">
+                  <Search className="h-6 w-6" />
+                </div>
+                <h3 className="font-black text-lg mb-2">
+                  {filter === "all" ? "No quests yet" : `No ${filter} quests`}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                  {filter === "all"
+                    ? "Create your first quest to start incentivizing learning with on-chain rewards."
+                    : filter === "owned"
+                      ? "You haven't created any quests yet. Start one to incentivize learners."
+                      : "You haven't enrolled in any quests yet. Browse available quests to get started."}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
     </div>
   )

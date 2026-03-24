@@ -1,11 +1,12 @@
-import { Wallet, Coins, TrendingUp, Trophy, Sparkles, Copy, Check } from "lucide-react"
-import { useState } from "react"
+import { Wallet, Coins, TrendingUp, Sparkles, Copy, Check, Loader2 } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useWallet } from "@/hooks/use-wallet"
-import { MOCK_USER_STATS } from "@/lib/mock-data"
 import { formatTokens } from "@/lib/utils"
+import { questClient } from "@/lib/contracts/quest"
+import { milestoneClient } from "@/lib/contracts/milestone"
 
 /* ─── Generated Avatar from wallet address ─── */
 
@@ -28,8 +29,48 @@ function WalletAvatar({ address }: { address: string }) {
 
 export function Profile() {
   const { connected, connect, address } = useWallet()
-  const stats = MOCK_USER_STATS
   const [copied, setCopied] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [totalEarned, setTotalEarned] = useState<bigint>(0n)
+  const [enrolledQuestsCount, setEnrolledQuestsCount] = useState(0)
+
+  const fetchStats = useCallback(async () => {
+    if (!address) return
+    setLoading(true)
+    try {
+      const quests = await questClient.getQuests()
+      let earned = 0n
+      let enrolledCount = 0
+
+      for (const q of quests) {
+        const enrollees = await questClient.getEnrollees(q.id)
+        if (enrollees.includes(address)) {
+          enrolledCount++
+          const milestones = await milestoneClient.getMilestones(q.id)
+          const completionsCount = await milestoneClient.getEnrolleeCompletions(q.id, address)
+          
+          if (completionsCount > 0 && milestones.length > 0) {
+              // Simplified: assume milestones are rewarded in order and we can sum up the first N milestones
+              for (let i = 0; i < completionsCount && i < milestones.length; i++) {
+                earned += milestones[i].rewardAmount
+              }
+          }
+        }
+      }
+      setTotalEarned(earned)
+      setEnrolledQuestsCount(enrolledCount)
+    } catch (err) {
+      console.error("Failed to fetch profile stats:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [address])
+
+  useEffect(() => {
+    if (connected && address) {
+      fetchStats()
+    }
+  }, [connected, address, fetchStats])
 
   const handleCopy = () => {
     if (address) {
@@ -76,59 +117,12 @@ export function Profile() {
                 <Wallet className="h-4 w-4" />
                 Connect Wallet
               </Button>
-
-              <div className="mt-8 pt-6 border-t-[2px] border-black animate-fade-in-up stagger-4">
-                <div className="flex flex-wrap justify-center gap-4">
-                  {[
-                    { icon: Trophy, text: "View achievements" },
-                    { icon: Coins, text: "Track earnings" },
-                    { icon: TrendingUp, text: "See progress" },
-                  ].map((item) => (
-                    <div key={item.text} className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-secondary border-[1.5px] border-black flex items-center justify-center">
-                        <item.icon className="h-3 w-3" />
-                      </div>
-                      <span className="text-xs font-bold text-muted-foreground">{item.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
-
-          <div className="absolute -top-4 -right-4 w-10 h-10 bg-primary border-[2px] border-black shadow-[3px_3px_0_#000] rotate-12 animate-fade-in-up stagger-5 hidden sm:block" />
-          <div className="absolute -bottom-3 -left-3 w-8 h-8 bg-success border-[2px] border-black shadow-[2px_2px_0_#000] -rotate-6 animate-fade-in-up stagger-6 hidden sm:block" />
         </div>
       </div>
     )
   }
-
-  const earnings = [
-    {
-      milestone: "Hello World",
-      workspace: "Learn to Code with Alex",
-      amount: 50,
-      date: "2 days ago",
-    },
-    {
-      milestone: "Build a CLI Tool",
-      workspace: "Learn to Code with Alex",
-      amount: 100,
-      date: "5 days ago",
-    },
-    {
-      milestone: "Set up Stellar CLI",
-      workspace: "Stellar Dev Bootcamp",
-      amount: 100,
-      date: "1 week ago",
-    },
-    {
-      milestone: "First Soroban Contract",
-      workspace: "Stellar Dev Bootcamp",
-      amount: 200,
-      date: "2 weeks ago",
-    },
-  ]
 
   return (
     <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-8">
@@ -145,7 +139,6 @@ export function Profile() {
           <div className="h-20 sm:h-28 relative">
             {/* Floating shapes in banner */}
             <div className="absolute top-3 right-6 w-10 h-10 bg-black/5 border-[2px] border-black/10 rotate-12 animate-float" style={{ animationDuration: "7s" }} />
-            <div className="absolute bottom-2 right-24 w-6 h-6 bg-black/5 border-[2px] border-black/10 -rotate-6 animate-float" style={{ animationDuration: "5s", animationDelay: "1s" }} />
           </div>
 
           {/* Profile info - overlaps the banner */}
@@ -183,10 +176,10 @@ export function Profile() {
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
                     <p className="text-2xl font-black tabular-nums">
-                      {formatTokens(stats.totalEarned)}
+                      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : formatTokens(Number(totalEarned))}
                     </p>
                   </div>
-                  <p className="text-xs font-bold">USDC earned</p>
+                  <p className="text-xs font-bold">Total USDC Earned</p>
                 </div>
               </div>
             </div>
@@ -194,64 +187,30 @@ export function Profile() {
         </div>
       </div>
 
-      {/* Earnings history */}
-      <div>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xl font-black">Earnings History</h2>
-          <span className="text-sm font-bold text-muted-foreground">
-            {earnings.length} transactions
-          </span>
-        </div>
-
-        <div className="space-y-4">
-          {earnings.length === 0 ? (
-            <Card className="animate-fade-in-up">
-              <CardContent className="flex flex-col items-center py-12 text-center">
-                <div className="w-14 h-14 bg-primary border-[3px] border-black shadow-[4px_4px_0_#000] flex items-center justify-center mb-4">
-                  <Coins className="h-6 w-6" />
-                </div>
-                <h3 className="font-black mb-2">No earnings yet</h3>
-                <p className="text-sm text-muted-foreground">
-                  Complete milestones to start earning USDC.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            earnings.map((e, i) => (
-              <div
-                key={i}
-                className={`animate-fade-in-up stagger-${i + 1}`}
-              >
-                <Card className="neo-lift hover:shadow-[7px_7px_0_#000] active:shadow-[2px_2px_0_#000] group">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        {/* Earning amount circle */}
-                        <div className="w-12 h-12 bg-success/10 border-[2px] border-black shadow-[2px_2px_0_#000] flex items-center justify-center flex-shrink-0 group-hover:bg-success/20 transition-colors">
-                          <Coins className="h-5 w-5 text-green-700" />
-                        </div>
-                        <div>
-                          <p className="font-black text-sm">{e.milestone}</p>
-                          <p className="text-xs font-bold text-muted-foreground">
-                            {e.workspace}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right flex flex-col items-end gap-1">
-                        <Badge variant="success" className="tabular-nums">
-                          +{e.amount} USDC
-                        </Badge>
-                        <p className="text-xs font-bold text-muted-foreground">
-                          {e.date}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            ))
-          )}
-        </div>
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <Card className="neo-lift border-black border-2">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary border-[2px] border-black shadow-[3px_3px_0_#000] flex items-center justify-center">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-muted-foreground">Enrolled Quests</p>
+              <p className="text-2xl font-black">{enrolledQuestsCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="neo-lift border-black border-2">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="w-12 h-12 bg-success border-[2px] border-black shadow-[3px_3px_0_#000] flex items-center justify-center">
+              <Coins className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-muted-foreground">Network Status</p>
+              <p className="text-xl font-black">Testnet</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
