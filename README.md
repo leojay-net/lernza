@@ -102,6 +102,8 @@ Three independent Soroban smart contracts orchestrated by the frontend:
   <img src=".github/assets/architecture.svg" alt="Lernza architecture" width="100%" />
 </p>
 
+Need the transaction-by-transaction flow? See the [contract interaction diagrams](docs/contract-interaction-diagrams.md) for quest creation, enrollment, funding, and reward distribution sequences rendered with GitHub-native Mermaid.
+
 **Why three contracts?**
 - **Separation of concerns** — each contract has a single responsibility
 - **Independent upgradability** — update rewards logic without touching quest management
