@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   ArrowRight,
   Users,
@@ -208,11 +209,8 @@ function MarqueeBanner() {
 
 /* ─── Main Landing Component ─── */
 
-interface LandingProps {
-  onNavigate: (page: string) => void
-}
-
-export function Landing({ onNavigate }: LandingProps) {
+export function Landing() {
+  const navigate = useNavigate()
   const subtitle = useTypewriter(
     "Create quests, set milestones, and reward learners with tokens. The first learn-to-earn platform on Stellar.",
     25
@@ -291,7 +289,7 @@ export function Landing({ onNavigate }: LandingProps) {
                 <Button
                   size="lg"
                   className="shimmer-on-hover group text-base"
-                  onClick={() => onNavigate("dashboard")}
+                  onClick={() => navigate("/dashboard")}
                 >
                   Launch App
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -525,7 +523,7 @@ export function Landing({ onNavigate }: LandingProps) {
             variant="secondary"
             size="lg"
             className="shimmer-on-hover group text-base"
-            onClick={() => onNavigate("dashboard")}
+            onClick={() => navigate("/dashboard")}
           >
             Launch App
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
