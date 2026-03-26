@@ -1,7 +1,8 @@
 #![no_std]
 #![allow(deprecated)]
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String, Vec,
+    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, Map, String,
+    Vec,
 };
 
 // Quest contract: the entry point for Lernza.
@@ -125,7 +126,7 @@ impl QuestContract {
         let quest = Self::load_quest(&env, quest_id)?;
         quest.owner.require_auth();
 
-        let mut enrollees = Self::load_enrollees(&env, quest_id);
+        let enrollees = Self::load_enrollees(&env, quest_id);
 
         // Check enrollment cap
         if let Some(cap) = env
@@ -144,7 +145,7 @@ impl QuestContract {
         }
 
         let mut new_enrollees = enrollees;
-        new_enrollees.push_back(enrollee.clone());
+        new_enrollees.set(enrollee.clone(), ());
         env.storage()
             .persistent()
             .set(&DataKey::Enrollees(quest_id), &new_enrollees);
@@ -172,7 +173,7 @@ impl QuestContract {
             return Err(Error::NotEnrolled);
         }
 
-        enrollees.remove(enrollee);
+        enrollees.remove(enrollee.clone());
         env.storage()
             .persistent()
             .set(&DataKey::Enrollees(quest_id), &enrollees);

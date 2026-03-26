@@ -1,6 +1,6 @@
 {
   "generators": {
-    "address": 5,
+    "address": 6,
     "nonce": 0,
     "mux_id": 0
   },
@@ -62,7 +62,7 @@
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
                 },
                 {
-                  "string": "Test"
+                  "string": "Invalid Dist"
                 },
                 {
                   "string": "Desc"
@@ -290,7 +290,7 @@
                       "symbol": "name"
                     },
                     "val": {
-                      "string": "Test"
+                      "string": "Invalid Dist"
                     }
                   },
                   {

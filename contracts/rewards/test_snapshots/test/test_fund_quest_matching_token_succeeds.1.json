@@ -62,7 +62,7 @@
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
                 },
                 {
-                  "string": "Test"
+                  "string": "Match Quest"
                 },
                 {
                   "string": "Desc"
@@ -132,7 +132,6 @@
         }
       ]
     ],
-    [],
     []
   ],
   "ledger": {
@@ -290,7 +289,7 @@
                       "symbol": "name"
                     },
                     "val": {
-                      "string": "Test"
+                      "string": "Match Quest"
                     }
                   },
                   {

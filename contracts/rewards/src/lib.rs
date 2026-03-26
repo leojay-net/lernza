@@ -63,6 +63,7 @@ pub enum Error {
     InsufficientPool = 4,
     InvalidAmount = 5,
     QuestNotFunded = 6,
+    TokenMismatch = 7,
 }
 
 const BUMP: u32 = 518_400;
@@ -121,6 +122,10 @@ impl RewardsContract {
         }
 
         let token_addr = Self::get_token(&env)?;
+
+        if quest_info.token_addr != token_addr {
+            return Err(Error::TokenMismatch);
+        }
 
         // If quest already has an authority, only they can add more funds
         let auth_key = DataKey::QuestAuthority(quest_id);

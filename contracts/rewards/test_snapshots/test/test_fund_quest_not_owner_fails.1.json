@@ -87,7 +87,7 @@
                   "string": "Secret"
                 },
                 {
-                  "string": "Hidden"
+                  "string": "Desc"
                 },
                 {
                   "string": "Programming"
@@ -268,7 +268,7 @@
               },
               "durability": "persistent",
               "val": {
-                "vec": []
+                "map": []
               }
             }
           },
@@ -317,7 +317,7 @@
                       "symbol": "description"
                     },
                     "val": {
-                      "string": "Hidden"
+                      "string": "Desc"
                     }
                   },
                   {
@@ -401,6 +401,22 @@
                       },
                       "val": {
                         "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "PublicQuests"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "u32": 0
+                          }
+                        ]
                       }
                     }
                   ]

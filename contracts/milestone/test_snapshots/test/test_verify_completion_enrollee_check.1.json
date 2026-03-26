@@ -29,7 +29,6 @@
         }
       ]
     ],
-    [],
     [
       [
         "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
@@ -47,6 +46,12 @@
                 },
                 {
                   "string": "Quest description"
+                },
+                {
+                  "string": "Programming"
+                },
+                {
+                  "vec": []
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
@@ -123,7 +128,7 @@
               },
               "durability": "persistent",
               "val": {
-                "vec": []
+                "map": []
               }
             }
           },
@@ -151,6 +156,14 @@
               "durability": "persistent",
               "val": {
                 "map": [
+                  {
+                    "key": {
+                      "symbol": "category"
+                    },
+                    "val": {
+                      "string": "Programming"
+                    }
+                  },
                   {
                     "key": {
                       "symbol": "created_at"
@@ -189,6 +202,14 @@
                     },
                     "val": {
                       "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "tags"
+                    },
+                    "val": {
+                      "vec": []
                     }
                   },
                   {
@@ -240,6 +261,22 @@
                       },
                       "val": {
                         "u32": 1
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "PublicQuests"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "u32": 0
+                          }
+                        ]
                       }
                     }
                   ]

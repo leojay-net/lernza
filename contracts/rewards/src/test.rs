@@ -8,6 +8,47 @@ use soroban_sdk::{
     Address, Env, String,
 };
 
+fn create_quest_with_token(
+    env: &Env,
+    quest_client: &QuestContractClient,
+    owner: &Address,
+    token_addr: &Address,
+    name: &str,
+) -> u32 {
+    quest_client.create_quest(
+        owner,
+        &String::from_str(env, name),
+        &String::from_str(env, "Desc"),
+        &String::from_str(env, "Programming"),
+        &soroban_sdk::Vec::<String>::new(env),
+        token_addr,
+        &Visibility::Public,
+    )
+}
+
+fn setup_uninitialized() -> (
+    Env,
+    RewardsContractClient<'static>,
+    Address,
+    QuestContractClient<'static>,
+    Address,
+) {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let token_admin = Address::generate(&env);
+    let token_contract = env.register_stellar_asset_contract_v2(token_admin.clone());
+    let token_addr = token_contract.address();
+
+    let quest_id = env.register(QuestContract, ());
+    let quest_client = QuestContractClient::new(&env, &quest_id);
+
+    let contract_id = env.register(RewardsContract, ());
+    let client = RewardsContractClient::new(&env, &contract_id);
+
+    (env, client, token_addr, quest_client, quest_id)
+}
+
 fn setup() -> (
     Env,
     RewardsContractClient<'static>,
@@ -61,15 +102,7 @@ fn test_fund_quest() {
     sac.mint(&owner, &10_000);
 
     // Create a quest first (so owner check passes)
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     client.fund_quest(&owner, &q_id, &5_000);
 
@@ -88,15 +121,7 @@ fn test_fund_quest_adds_to_existing() {
     let sac = StellarAssetClient::new(&env, &token_addr);
     sac.mint(&owner, &10_000);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     client.fund_quest(&owner, &q_id, &3_000);
     client.fund_quest(&owner, &q_id, &2_000);
@@ -109,15 +134,7 @@ fn test_fund_invalid_amount() {
     let (env, client, _cid, token_addr, quest_client, _quest_id) = setup();
     let owner = Address::generate(&env);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     let result = client.try_fund_quest(&owner, &q_id, &0);
     assert_eq!(result, Err(Ok(Error::InvalidAmount)));
@@ -133,15 +150,7 @@ fn test_different_funder_unauthorized() {
     sac.mint(&owner, &10_000);
     sac.mint(&other, &10_000);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     // Owner funds first
     client.fund_quest(&owner, &q_id, &1_000);
@@ -160,15 +169,7 @@ fn test_distribute_reward() {
     let sac = StellarAssetClient::new(&env, &token_addr);
     sac.mint(&owner, &10_000);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     client.fund_quest(&owner, &q_id, &5_000);
     client.distribute_reward(&owner, &q_id, &enrollee, &100);
@@ -195,15 +196,7 @@ fn test_distribute_multiple_rewards() {
     let sac = StellarAssetClient::new(&env, &token_addr);
     sac.mint(&owner, &10_000);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     client.fund_quest(&owner, &q_id, &5_000);
     client.distribute_reward(&owner, &q_id, &e1, &100);
@@ -227,15 +220,7 @@ fn test_insufficient_pool() {
     let sac = StellarAssetClient::new(&env, &token_addr);
     sac.mint(&owner, &10_000);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     client.fund_quest(&owner, &q_id, &100);
     let result = client.try_distribute_reward(&owner, &q_id, &enrollee, &500);
@@ -252,15 +237,7 @@ fn test_distribute_unauthorized() {
     let sac = StellarAssetClient::new(&env, &token_addr);
     sac.mint(&owner, &10_000);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     client.fund_quest(&owner, &q_id, &5_000);
 
@@ -314,15 +291,7 @@ fn test_authority_self_distribution() {
     let sac = StellarAssetClient::new(&env, &token_addr);
     sac.mint(&owner, &10_000);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     client.fund_quest(&owner, &q_id, &5_000);
 
@@ -345,15 +314,7 @@ fn test_distribute_reward_no_milestone_check() {
     let sac = StellarAssetClient::new(&env, &token_addr);
     sac.mint(&owner, &10_000);
 
-    let q_id = quest_client.create_quest(
-        &owner,
-        &String::from_str(&env, "Test"),
-        &String::from_str(&env, "Desc"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
-        &token_addr,
-        &Visibility::Public,
-    );
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Test");
 
     client.fund_quest(&owner, &q_id, &5_000);
 
@@ -377,17 +338,15 @@ fn test_fund_quest_not_owner_fails() {
     sac.mint(&legitimate_owner, &10_000);
 
     // Create a quest owned by Alice
-    let q_id = quest_client.create_quest(
+    let q_id = create_quest_with_token(
+        &env,
+        &quest_client,
         &legitimate_owner,
-        &String::from_str(&env, "Secret"),
-        &String::from_str(&env, "Hidden"),
-        &String::from_str(&env, "Programming"),
-        &soroban_sdk::Vec::<String>::new(&env),
         &token_addr,
-        &Visibility::Public,
+        "Secret",
     );
 
-    // Attacker tries to fund and become authority ΓÇö should FAIL with Unauthorized
+    // Attacker tries to fund and become authority - should fail with Unauthorized
     let result = client.try_fund_quest(&attacker, &q_id, &1);
     assert_eq!(result, Err(Ok(Error::Unauthorized)));
 
@@ -397,4 +356,154 @@ fn test_fund_quest_not_owner_fails() {
     // Legitimate owner can still fund their own quest
     client.fund_quest(&legitimate_owner, &q_id, &5_000);
     assert_eq!(client.get_pool_balance(&q_id), 5_000);
+}
+
+/// fix(#167): quest token must match the rewards contract token
+#[test]
+fn test_fund_quest_token_mismatch_fails() {
+    let (env, client, _cid, token_addr, quest_client, _quest_id) = setup();
+    let owner = Address::generate(&env);
+
+    // Register a second, different SAC token
+    let other_token_admin = Address::generate(&env);
+    let other_token_contract = env.register_stellar_asset_contract_v2(other_token_admin.clone());
+    let other_token_addr = other_token_contract.address();
+
+    // Mint some of the other token to owner
+    let other_sac = StellarAssetClient::new(&env, &other_token_addr);
+    other_sac.mint(&owner, &10_000);
+
+    // Create a quest configured for the OTHER token (not the rewards token)
+    let q_id = create_quest_with_token(
+        &env,
+        &quest_client,
+        &owner,
+        &other_token_addr,
+        "Mismatch Quest",
+    );
+
+    // Funding should be rejected because quest.token_addr != rewards token
+    let result = client.try_fund_quest(&owner, &q_id, &1_000);
+    assert_eq!(result, Err(Ok(Error::TokenMismatch)));
+
+    // Pool must remain empty
+    assert_eq!(client.get_pool_balance(&q_id), 0);
+
+    // Rewards token balance of owner is untouched when validation fails
+    let rewards_token = TokenClient::new(&env, &token_addr);
+    assert_eq!(rewards_token.balance(&owner), 0);
+}
+
+/// fix(#167): quest token matching the rewards token is accepted
+#[test]
+fn test_fund_quest_matching_token_succeeds() {
+    let (env, client, _cid, token_addr, quest_client, _quest_id) = setup();
+    let owner = Address::generate(&env);
+
+    let sac = StellarAssetClient::new(&env, &token_addr);
+    sac.mint(&owner, &10_000);
+
+    // Create a quest configured for the SAME token as the rewards contract
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Match Quest");
+
+    // Funding should succeed without error
+    client.fund_quest(&owner, &q_id, &5_000);
+    assert_eq!(client.get_pool_balance(&q_id), 5_000);
+}
+
+#[test]
+fn test_fund_quest_requires_initialize() {
+    let (env, client, token_addr, quest_client, _quest_contract_id) = setup_uninitialized();
+    let owner = Address::generate(&env);
+
+    let sac = StellarAssetClient::new(&env, &token_addr);
+    sac.mint(&owner, &10_000);
+
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Init Required");
+
+    let result = client.try_fund_quest(&owner, &q_id, &1_000);
+    assert_eq!(result, Err(Ok(Error::NotInitialized)));
+    assert_eq!(client.get_pool_balance(&q_id), 0);
+}
+
+#[test]
+fn test_distribute_invalid_amount() {
+    let (env, client, _cid, token_addr, quest_client, _quest_id) = setup();
+    let owner = Address::generate(&env);
+    let enrollee = Address::generate(&env);
+
+    let sac = StellarAssetClient::new(&env, &token_addr);
+    sac.mint(&owner, &10_000);
+
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Invalid Dist");
+    client.fund_quest(&owner, &q_id, &5_000);
+
+    let result = client.try_distribute_reward(&owner, &q_id, &enrollee, &0);
+    assert_eq!(result, Err(Ok(Error::InvalidAmount)));
+    assert_eq!(client.get_pool_balance(&q_id), 5_000);
+}
+
+#[test]
+fn test_distribute_unauthorized_keeps_pool_unchanged() {
+    let (env, client, _cid, token_addr, quest_client, _quest_id) = setup();
+    let owner = Address::generate(&env);
+    let imposter = Address::generate(&env);
+    let enrollee = Address::generate(&env);
+
+    let sac = StellarAssetClient::new(&env, &token_addr);
+    sac.mint(&owner, &10_000);
+
+    let q_id = create_quest_with_token(&env, &quest_client, &owner, &token_addr, "Unauthorized");
+    client.fund_quest(&owner, &q_id, &2_000);
+
+    let result = client.try_distribute_reward(&imposter, &q_id, &enrollee, &100);
+    assert_eq!(result, Err(Ok(Error::Unauthorized)));
+    assert_eq!(client.get_pool_balance(&q_id), 2_000);
+}
+
+#[test]
+fn test_fund_nonexistent_quest_id_surface() {
+    let (env, client, _cid, token_addr, _quest_client, _quest_id) = setup();
+    let owner = Address::generate(&env);
+
+    let sac = StellarAssetClient::new(&env, &token_addr);
+    sac.mint(&owner, &1_000);
+
+    let result = client.try_fund_quest(&owner, &999, &100);
+
+    // Frontend-visible surface today: quest NotFound (code 1) aliases to rewards error code 1.
+    assert_eq!(result, Err(Ok(Error::AlreadyInitialized)));
+    assert_eq!(client.get_pool_balance(&999), 0);
+
+    let token_client = TokenClient::new(&env, &token_addr);
+    assert_eq!(token_client.balance(&owner), 1_000);
+}
+
+#[test]
+fn test_fund_invalid_quest_contract_address_surface() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let token_admin = Address::generate(&env);
+    let token_contract = env.register_stellar_asset_contract_v2(token_admin.clone());
+    let token_addr = token_contract.address();
+
+    let invalid_quest_addr = Address::generate(&env);
+
+    let contract_id = env.register(RewardsContract, ());
+    let client = RewardsContractClient::new(&env, &contract_id);
+    client.initialize(&token_addr, &invalid_quest_addr);
+
+    let owner = Address::generate(&env);
+    let sac = StellarAssetClient::new(&env, &token_addr);
+    sac.mint(&owner, &1_000);
+
+    let result = client.try_fund_quest(&owner, &0, &100);
+
+    // Frontend-visible surface today when quest contract address is invalid.
+    assert!(matches!(result, Err(Err(soroban_sdk::InvokeError::Abort))));
+    assert_eq!(client.get_pool_balance(&0), 0);
+
+    let token_client = TokenClient::new(&env, &token_addr);
+    assert_eq!(token_client.balance(&owner), 1_000);
 }
