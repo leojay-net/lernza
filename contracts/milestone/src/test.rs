@@ -4,7 +4,9 @@ use super::*;
 use soroban_sdk::{testutils::Address as _, Address, Env, String, Vec};
 
 // Import the quest contract for testing
+extern crate certificate;
 extern crate quest;
+use certificate::CertificateContract;
 use quest::{QuestContract, QuestContractClient, Visibility};
 
 fn setup() -> (
@@ -26,8 +28,13 @@ fn setup() -> (
 
     let admin = Address::generate(&env);
 
-    // Initialize milestone contract with quest contract address
-    milestone_client.initialize(&admin, &quest_contract_id);
+    // Register certificate contract with milestone contract as owner,
+    // so cross-contract minting from milestone passes auth checks.
+    let certificate_contract_id =
+        env.register(CertificateContract, (milestone_contract_id.clone(),));
+
+    // Initialize milestone contract with quest + certificate contract addresses
+    milestone_client.initialize(&admin, &quest_contract_id, &certificate_contract_id);
 
     (env, milestone_client, quest_client, admin)
 }
@@ -129,14 +136,7 @@ fn test_get_milestones() {
 fn test_verify_completion() {
     let (env, client, quest_client, owner) = setup();
     let q_id = create_quest(&env, &quest_client, &owner);
-    create_ms(
-        &env,
-        &client,
-        &owner,
-        q_id,
-        "Deploy a contract",
-        100,
-    );
+    create_ms(&env, &client, &owner, q_id, "Deploy a contract", 100);
 
     let enrollee = Address::generate(&env);
     // Enroll the user first (Issue #162 fix requires this)
@@ -410,7 +410,7 @@ fn test_get_quest_not_found_fails() {
         &99,
         &String::from_str(&env, "Title"),
         &String::from_str(&env, "Desc"),
-        &100
+        &100,
     );
     assert_eq!(result, Err(Ok(Error::NotFound)));
 }
